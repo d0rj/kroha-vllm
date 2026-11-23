@@ -201,6 +201,21 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "GDN-1"):
             supports_config(cfg)
 
+    def test_runtime_bf16_overrides_fp32_checkpoint_config(self):
+        cfg = copy.deepcopy(self.config)
+        cfg.dtype = 'float32'
+        previous = torch.get_default_dtype()
+        try:
+            torch.set_default_dtype(torch.bfloat16)
+            with patch.dict('sys.modules', mocks()):
+                adapter = self.adapter_class(cfg)
+        finally:
+            torch.set_default_dtype(previous)
+        self.assertEqual(adapter.hf.model.embed_tokens.weight.dtype, torch.bfloat16)
+        for layer in adapter.hf.model.layers:
+            self.assertEqual(layer.self_attn.q_proj.weight.dtype, torch.bfloat16)
+            self.assertEqual(layer.mlp.router.weight.dtype, torch.float32)
+
 
 if __name__ == "__main__":
     unittest.main()

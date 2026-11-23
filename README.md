@@ -16,8 +16,8 @@ repository does not install or register a vLLM plugin.
 
 The same GitHub repository also contains an independently packaged
 [SGLang adapter](https://github.com/d0rj/kroha-vllm/tree/main/sglang).
-It targets SGLang 0.5.23 and is **experimental pending native GPU validation**.
-Its configuration, weight transfer and cache wiring passed CPU checks. Install
+It targets SGLang 0.5.23 and passed bounded native BF16 GPU checks on the completed
+36B checkpoint, alongside the vLLM adapter. Install
 it in a separate environment, following its own README; this root package
 continues to install only the vLLM adapter.
 
@@ -57,14 +57,17 @@ vllm serve /path/to/kroha --served-model-name Kroha \
   --trust-remote-code --dtype bfloat16 --host 127.0.0.1 \
   --enforce-eager --no-enable-prefix-caching --enable-chunked-prefill \
   --no-async-scheduling --mamba-ssm-cache-dtype float32 \
-  --max-model-len 2048 --max-num-seqs 128 --max-num-batched-tokens 8192 \
-  --kv-cache-memory-bytes 1073741824 \
+  --max-model-len 16384 --max-num-seqs 16 --max-num-batched-tokens 512 \
+  --kv-cache-memory-bytes 536870912 --gpu-memory-utilization 0.5 \
   --additional-config '{"gdn_prefill_backend":"triton","kroha_fused_projections":true,"kroha_compile_regions":false}'
 ```
 
-The documented serving checks cover **2,048-token context**. This command
-deliberately uses that tested limit even for a model trained with a longer
-context. Native serving validation of the final 16K checkpoint is pending.
+The completed 36B GDN-1 checkpoint passed bounded GPU checks with a
+**16,384-token window**, including prompts of 4,097 and 16,368 tokens,
+512-token chunked prefill, mixed-length requests, cached decode and request-slot
+reuse. Use a smaller limit when serving a model trained for a shorter context.
+The [validation receipt](validation/kroha-adapters-gpu-20261123.json) records
+the exact checkpoint, runtime versions and BF16 differences from HF.
 
 ## Implementation
 

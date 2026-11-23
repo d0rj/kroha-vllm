@@ -49,7 +49,9 @@ class KrohaForCausalLM(nn.Module):
 
         self.config = config
         config._attn_implementation = "sdpa"
-        self.hf = AutoModelForCausalLM.from_config(config, trust_remote_code=True).eval()
+        # HF otherwise honors the checkpoint's FP32 dtype over SGLang's BF16 context.
+        self.hf = AutoModelForCausalLM.from_config(
+            config, trust_remote_code=True, dtype=torch.get_default_dtype()).eval()
         for module in self.hf.modules():
             if hasattr(module, "router") and isinstance(module.router, nn.Linear):
                 module.router.float()

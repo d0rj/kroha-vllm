@@ -6,10 +6,17 @@ directory of [d0rj/kroha-vllm](https://github.com/d0rj/kroha-vllm)
 `KrohaRoutedNormForCausalLM` architectures without modifying SGLang core or the
 two Python files of the standalone HF model.
 
-**Experimental: native GPU generation parity and throughput have not yet been
-validated.** The GPU is occupied by training. CPU checks cover the configuration,
-weight transfer and model wiring using reference attention/cache implementations;
-they do not certify SGLang's CUDA kernels or serving scheduler.
+Native GPU checks now cover the completed 36B Kroha GDN-1 checkpoint on
+RTX 5070 Ti, BF16, with a 16,384-token window. They include mixed-length text
+and explicit DNA6 IDs, 512-token chunked prefill, cached decode, fixed-prefix
+repeats and request-slot reuse. BF16 results are **not bit-identical to HF**:
+nearby token probabilities can exchange rank. See the
+[GPU validation receipt](https://github.com/d0rj/kroha-vllm/blob/main/validation/kroha-adapters-gpu-20261123.json).
+
+The first GPU run exposed an FP32/BF16 loading error. The adapter now explicitly
+uses SGLang's runtime dtype while retaining FP32 routers and decay parameters.
+The regression is covered by the CPU tests. These bounded checks do not certify
+other runtimes, hardware, model revisions or unsupported serving modes.
 
 ## Install
 
@@ -45,12 +52,10 @@ objects into `config.json` or changing the HF model's AutoClass mapping.
 The initial implementation supports one GPU and ordinary causal generation.
 Prefix reuse, speculative decoding, quantization, overlapping scheduling and
 CUDA graphs are rejected until they have their own validation. It uses the
-native GDN kernels, whose BF16 rounding must be compared with the HF reference
-before treating the integration as ready for production.
+native GDN kernels. Their BF16 rounding differs from the HF path, so exact
+greedy sequences can differ at low-margin token choices.
 
-## Candidate server command
-
-The following is a **validation target**, not a certified production recipe:
+## Serve the validated checkpoint
 
 ```bash
 export SGLANG_EXTERNAL_MODEL_PACKAGE=kroha_sglang
@@ -59,11 +64,12 @@ export SGLANG_MAMBA_CONV_DTYPE=bfloat16
 python -m sglang.launch_server \
   --model-path /path/to/standalone/kroha --trust-remote-code \
   --served-model-name Kroha --dtype bfloat16 --host 127.0.0.1 \
-  --context-length 2048 --attention-backend triton \
+  --context-length 16384 --attention-backend triton \
   --linear-attn-decode-backend triton --linear-attn-prefill-backend triton \
   --disable-radix-cache --disable-overlap-schedule \
   --cuda-graph-backend-decode disabled --cuda-graph-backend-prefill disabled \
-  --max-running-requests 32 --chunked-prefill-size 2048
+  --max-running-requests 16 --max-total-tokens 32768 \
+  --mem-fraction-static 0.6 --chunked-prefill-size 512
 ```
 
 The model path must contain a complete HF export. A longer model training
@@ -84,6 +90,6 @@ CUDA_VISIBLE_DEVICES='' SGLANG_USE_CPU_ENGINE=1 \
 ```
 
 Use `integrations/sglang-kroha/tests` in the training project checkout.
-GPU validation must additionally compare prefill logits, cached greedy decode,
-mixed-length batches, chunked prefill and replacement/reuse of request slots
-against HF, then measure memory and throughput on the same workload as vLLM.
+GPU validation receipts record the exact checkpoint, runtime versions, adapter
+hashes and comparison scope. They cover ordinary causal serving without prefix
+reuse or graphs. A separate workload benchmark is required for throughput claims.

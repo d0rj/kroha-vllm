@@ -1,0 +1,225 @@
+{
+  "status": "native_gpu_functional_checks_passed_hf_bf16_not_bit_exact",
+  "date": "2026-11-23",
+  "model": {
+    "name": "Kroha GDN1 36B final powerup_8x",
+    "parameters": 71685712,
+    "vocab_size": 69650,
+    "stage_step": 11448,
+    "stage_source_tokens": 3000000000,
+    "total_curriculum_source_tokens": 36000000000,
+    "max_position_embeddings": 16384,
+    "source_weight_sha256": {
+      "model.safetensors": "b2963b9c429c28d24407c7d2355752e14fb6a4e116268b92743fda4e81939884"
+    },
+    "learned_tensors_unchanged": true,
+    "model_code_sha256": {
+      "configuration_kroha.py": "9d83cd17f1bcb26e98d695da72411c4e2aebf7580d939d7ba43d5adfa00e23d5",
+      "modeling_kroha.py": "d99422d839dc0ad82bad9c9c4870aa73b9462172079840639bb05e0678f86809"
+    }
+  },
+  "hardware": "NVIDIA GeForce RTX 5070 Ti 16 GiB",
+  "dtype": "bfloat16, FP32 routers/decay/recurrent state",
+  "validator_sha256": "da60034bfb64a2ed30862ccff36b1df31ccaee93cfc47a698a21c5c8c774a8c7",
+  "backends": {
+    "vllm": {
+      "versions": {
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "vllm": "0.32.0"
+      },
+      "adapter_sha256": "e052240966bbf36ab7464dd8768086765c5406a56a6ae58501ada3a19fa004da",
+      "requests": 10,
+      "max_prompt_tokens": 16368,
+      "window_tokens": 16384,
+      "prefill_chunk_tokens": 512,
+      "teacher_forced_greedy_matches": 68,
+      "teacher_forced_total": 68,
+      "teacher_forced_disagreements": [],
+      "max_shared_top20_logprob_error": 1.189507007598877,
+      "exact_autoregressive_sequences": 9,
+      "autoregressive_sequences": 10,
+      "autoregressive_token_matches": 64,
+      "autoregressive_tokens": 68,
+      "fixed_prefix_repeats_identical": true,
+      "foreign_request_logprobs_max_difference": 0.0,
+      "cache_reprefill_greedy_matches": 11,
+      "cache_reprefill_checks": 12,
+      "cache_reprefill_disagreements": [
+        {
+          "name": "text-129",
+          "step": 4,
+          "cached_token": 4986,
+          "replay_token": 80,
+          "shared_tokens": 19,
+          "max_logprob_error": 0.10091078281402588
+        }
+      ],
+      "text_and_token_ids_agree": true,
+      "explicit_dna_ids_checked": true,
+      "regions_compiled": false
+    },
+    "sglang": {
+      "versions": {
+        "torch": "2.14.1+cu130",
+        "transformers": "5.19.0",
+        "sglang": "0.5.23"
+      },
+      "adapter_sha256": "9c0cfdeb59eaeddf0239dfd082f86dc18cf7701b73c165a90492c9f3ffa9cb29",
+      "requests": 10,
+      "max_prompt_tokens": 16368,
+      "window_tokens": 16384,
+      "prefill_chunk_tokens": 512,
+      "teacher_forced_greedy_matches": 67,
+      "teacher_forced_total": 68,
+      "teacher_forced_disagreements": [
+        {
+          "name": "text-129",
+          "step": 4,
+          "native_token": 4986,
+          "hf_token": 80,
+          "hf_top2_margin": 0.125,
+          "shared_tokens": 19,
+          "max_logprob_error": 0.15905141830444336
+        }
+      ],
+      "max_shared_top20_logprob_error": 0.6547002792358398,
+      "exact_autoregressive_sequences": 9,
+      "autoregressive_sequences": 10,
+      "autoregressive_token_matches": 64,
+      "autoregressive_tokens": 68,
+      "fixed_prefix_repeats_identical": true,
+      "foreign_request_logprobs_max_difference": 0.0,
+      "cache_reprefill_greedy_matches": 11,
+      "cache_reprefill_checks": 12,
+      "cache_reprefill_disagreements": [
+        {
+          "name": "text-129",
+          "step": 4,
+          "cached_token": 4986,
+          "replay_token": 80,
+          "shared_tokens": 19,
+          "max_logprob_error": 0.23270034790039062
+        }
+      ],
+      "text_and_token_ids_agree": true,
+      "explicit_dna_ids_checked": true,
+      "regions_compiled": false
+    }
+  },
+  "fixes": [
+    "SGLang must explicitly pass the runtime dtype to HF from_config; checkpoint metadata otherwise creates FP32 projections and breaks native BF16 GDN.",
+    "The local vLLM launcher now accepts kroha_routed_norm and uses the trained context by default, with an explicit bounded context override."
+  ],
+  "fp32_rounding_controls": [
+    {
+      "name": "text-129",
+      "step": 4,
+      "fp32_cpu_token": 4986,
+      "fp32_top2_margin": 0.07175445556640625,
+      "top5": [
+        {
+          "token": 4986,
+          "logprob": -1.454637050628662
+        },
+        {
+          "token": 80,
+          "logprob": -1.5263915061950684
+        },
+        {
+          "token": 79,
+          "logprob": -2.4009618759155273
+        },
+        {
+          "token": 81,
+          "logprob": -2.524721622467041
+        },
+        {
+          "token": 82,
+          "logprob": -3.0445313453674316
+        }
+      ]
+    },
+    {
+      "name": "text-31",
+      "step": 7,
+      "fp32_cpu_token": 819,
+      "fp32_top2_margin": 2.2693700790405273,
+      "top5": [
+        {
+          "token": 819,
+          "logprob": -0.15266743302345276
+        },
+        {
+          "token": 664,
+          "logprob": -2.4220376014709473
+        },
+        {
+          "token": 89,
+          "logprob": -3.6652865409851074
+        },
+        {
+          "token": 447,
+          "logprob": -3.962667942047119
+        },
+        {
+          "token": 15086,
+          "logprob": -5.67958402633667
+        }
+      ]
+    },
+    {
+      "name": "dna6",
+      "step": 7,
+      "fp32_cpu_token": 284,
+      "fp32_top2_margin": 5.5283589363098145,
+      "top5": [
+        {
+          "token": 284,
+          "logprob": -0.21223045885562897
+        },
+        {
+          "token": 1846,
+          "logprob": -5.740589618682861
+        },
+        {
+          "token": 651,
+          "logprob": -6.103147983551025
+        },
+        {
+          "token": 80,
+          "logprob": -6.220213890075684
+        },
+        {
+          "token": 476,
+          "logprob": -6.5625152587890625
+        }
+      ]
+    }
+  ],
+  "cpu_checks": {
+    "sglang_original_architecture": 5,
+    "sglang_routed_norm": 5,
+    "launcher": 1
+  },
+  "scope": [
+    "Native GPU, own-runtime HF BF16 references, mixed request lengths, chunked prefill and cached decode",
+    "Window 16384 with 4097/16368-token synthetic prompts, ordinary English/Russian text inputs and explicit DNA6 token IDs",
+    "Fixed-prefix repeated requests and replacement of a neighbour request; strict loading of unchanged final weights"
+  ],
+  "limitations": [
+    "BF16 paths and batch/kernel shapes are not bit-identical. Low-margin argmax choices and full generated sequences can differ.",
+    "In the disputed text-129 prefix, FP32 CPU picks token 4986 like native decode, while HF BF16 picks token 80.",
+    "Cache-versus-reprefill comparisons can also change a low-margin BF16 choice; repeated fixed prefixes on the validated fused path remained identical.",
+    "No quality benchmark, retrieval benchmark, throughput speedup or broader hardware/runtime certification is claimed.",
+    "Prefix reuse, quantization, speculative decoding, overlap scheduling and whole-model CUDA graphs remain unsupported or unvalidated."
+  ],
+  "diagnostic_unfused_vllm": "Disabling projection fusion did not improve agreement: 63/64 teacher-forced matches and repeat-logprob differences up to 0.025; validated defaults remain fused.",
+  "records_sha256": {
+    "hf-vllm-full.json": "f7a5ac0cd22da7bf37b76685a9047687a3e952bbcb9d4273ac9836ae19d02838",
+    "hf-sglang-full.json": "6cd855e697218f4426a783b5bbaea3173b955b6d1917ba576532482b00c63423",
+    "vllm-final.json": "fa4654c1274b1a4f6d24fa92951b1d2a0ca3d08d0cada4b6d96ddb2a11cc8222",
+    "sglang-final.json": "73ea7ba087abb3f6a8af8e27ecebdb25fbec65906c02318dc9b89e22bc459c28",
+    "fp32-control.json": "08f2e987e4971b346334ba317ab036010915867dac7d62dc1ac962280fdb6eb7"
+  }
+}
