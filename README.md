@@ -12,8 +12,14 @@ artifacts with only `configuration_kroha.py` and `modeling_kroha.py`.
 
 HF hosts the weights, tokenizer and model implementation. This package supplies
 the native engine integration; copying its Python file into an HF model
-repository does not install or register a vLLM plugin. No SGLang adapter is
-included.
+repository does not install or register a vLLM plugin.
+
+The same GitHub repository also contains an independently packaged
+[SGLang adapter](https://github.com/d0rj/kroha-vllm/tree/main/sglang).
+It targets SGLang 0.5.23 and is **experimental pending native GPU validation**.
+Its configuration, weight transfer and cache wiring passed CPU checks. Install
+it in a separate environment, following its own README; this root package
+continues to install only the vLLM adapter.
 
 ## Installation
 

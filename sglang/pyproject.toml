@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kroha-sglang"
+version = "0.1.0"
+description = "Native SGLang hybrid attention adapter for standalone HF Kroha"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["sglang==0.5.23"]
+
+[project.urls]
+Repository = "https://github.com/d0rj/kroha-vllm/tree/main/sglang"
+
+[tool.setuptools.packages.find]
+include = ["kroha_sglang*"]
