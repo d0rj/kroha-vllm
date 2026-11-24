@@ -1,8 +1,8 @@
 # Kroha native vLLM adapter
 
 Standalone Python plugin for serving Kroha GDN-1 models with **vLLM 0.32.x**.
-The canonical repository is [d0rj/kroha-vllm](https://github.com/d0rj/kroha-vllm)
-(currently private). The package does not import `tiny_llm`.
+The public repository is [d0rj/kroha-vllm](https://github.com/d0rj/kroha-vllm).
+The package does not import `tiny_llm`.
 
 The plugin registers `KrohaForCausalLM` and `KrohaRoutedNormForCausalLM` through
 the standard `vllm.general_plugins` entry point. The latter is the architecture
@@ -28,11 +28,10 @@ The existing validation used vLLM 0.32.x, PyTorch 2.13.0+cu130,
 Transformers 5.17.0 and FLA 0.5.2 on RTX 5070 Ti. Other runtime versions
 require validation.
 
-With that compatible runtime already installed and GitHub access to this
-private repository:
+With that compatible runtime already installed:
 
 ```bash
-gh repo clone d0rj/kroha-vllm
+git clone https://github.com/d0rj/kroha-vllm.git
 cd kroha-vllm
 python -m pip install --no-deps .
 python -m pip check

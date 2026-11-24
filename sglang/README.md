@@ -1,8 +1,8 @@
 # Kroha native SGLang adapter
 
 External model package for **SGLang 0.5.23**, distributed in the `sglang/`
-directory of [d0rj/kroha-vllm](https://github.com/d0rj/kroha-vllm)
-(currently private). It supports the GDN-1 `KrohaForCausalLM` and
+directory of the public [d0rj/kroha-vllm](https://github.com/d0rj/kroha-vllm)
+repository. It supports the GDN-1 `KrohaForCausalLM` and
 `KrohaRoutedNormForCausalLM` architectures without modifying SGLang core or the
 two Python files of the standalone HF model.
 
@@ -28,7 +28,7 @@ environments. For a fresh Python 3.12 environment:
 uv venv --python 3.12 .venv
 source .venv/bin/activate
 uv pip install --prerelease=allow --torch-backend cu130 'sglang==0.5.23'
-# From the root of the authenticated private GitHub checkout:
+# From the root of the GitHub checkout:
 uv pip install --no-deps ./sglang
 ```
 
