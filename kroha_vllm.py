@@ -5,6 +5,8 @@ scheduling, convolution and per-application recurrent cache. FLA supplies GDN-1
 with the original HF rounding boundaries. Optional QKV/BAZ fusion uses standard
 vLLM linear layers and aliases the original weights, without duplicating them.
 """
+import math
+import sys
 import types
 
 
@@ -119,11 +121,22 @@ def _implementation():
                 raise ValueError('Use --enforce-eager; dynamic routed dispatch is not a whole-model CUDA graph')
             self.config=c
             options=vllm_config.additional_config or {}
+            self.inference_passes = options.get('kroha_inference_passes', c.num_passes)
+            self.loopcd_weight = options.get('kroha_loopcd_weight', 0.0)
+            if type(self.inference_passes) is not int or not 1 <= self.inference_passes <= c.num_passes:
+                raise ValueError('Kroha inference depth must be within the trained depth')
+            if (type(self.loopcd_weight) not in (int, float) or
+                    not math.isfinite(self.loopcd_weight) or self.loopcd_weight < 0):
+                raise ValueError('Kroha LoopCD weight must be finite and nonnegative')
+            if self.loopcd_weight and (self.inference_passes != 2 or c.num_passes != 2):
+                raise ValueError('Kroha LoopCD requires both passes')
             self.fuse_projections=options.get('kroha_fused_projections',True)
             self.compile_regions=options.get('kroha_compile_regions',False)
             c._attn_implementation='sdpa'
             self.hf=AutoModelForCausalLM.from_config(c,trust_remote_code=True,
                 dtype=vllm_config.model_config.dtype).eval()
+            if self.inference_passes != c.num_passes:
+                self.hf.set_inference_passes(self.inference_passes)
             for module in self.hf.modules():
                 if hasattr(module,'router')and isinstance(module.router,nn.Linear):module.router.float()
                 for name in ('A_log','dt_bias'):
@@ -137,7 +150,14 @@ def _implementation():
             self.paged_attention=nn.ModuleDict()
             self.delta_attention=nn.ModuleDict()
             self.qkv=nn.ModuleDict();self.baz=nn.ModuleDict()
-            for slot,kind in enumerate(c.layer_types):
+            self.coda_slot = c.num_hidden_layers - 1
+            self.reference_coda_slot = c.num_hidden_layers
+            layers = dict(enumerate(c.layer_types[:1 + self.inference_passes * c.num_core_layers]))
+            layers[self.coda_slot] = c.layer_types[self.coda_slot]
+            if self.loopcd_weight:
+                layers[self.reference_coda_slot] = layers[self.coda_slot]
+                self._apply_layer = sys.modules[type(self.hf.model).__module__]._apply_layer
+            for slot,kind in layers.items():
                 name=f'{prefix}virtual_layers.{slot}.attn'
                 if kind=='full_attention':
                     self.paged_attention[str(slot)]=Attention(c.num_attention_heads,c.head_dim,c.head_dim**-.5,
@@ -222,11 +242,52 @@ def _implementation():
         def forward(self,input_ids,positions,intermediate_tensors=None,inputs_embeds=None):
             if intermediate_tensors is not None:raise ValueError('Kroha supports one pipeline stage')
             self._positions=positions
+            if self.loopcd_weight:
+                if inputs_embeds is None:
+                    inputs_embeds = self.embed_input_ids(input_ids)
+                return self._loopcd_forward(inputs_embeds[None], positions[None])
             return self.hf.model(input_ids=input_ids[None]if input_ids is not None else None,
                 inputs_embeds=inputs_embeds[None]if inputs_embeds is not None else None,
                 position_ids=positions[None],use_cache=False).last_hidden_state[0]
 
-        def compute_logits(self,hidden_states):return self.hf.lm_head(hidden_states)
+        def _loopcd_forward(self, hidden, position_ids):
+            model = self.hf.model
+            positions = model.rotary_emb(hidden, position_ids)
+            options = dict(position_ids=position_ids)
+            block_size = self.config.attnres_block_size
+
+            def apply(layer, slot, depth, pass_index, core, blocks, partial):
+                partial, _, _, _ = self._apply_layer(
+                    partial, *blocks, layer=layer, core=core, pass_index=pass_index,
+                    cache_index=slot, positions=positions, mask=None, valid=None,
+                    past_key_values=None, options=options)
+                if 2 * (depth + 1) % block_size == 0:
+                    return (*blocks, partial), None
+                return blocks, partial
+
+            def readout(blocks, partial):
+                sources = blocks if partial is None else (*blocks, partial)
+                return model.norm(model.output_res(*sources))[0]
+
+            blocks, partial = apply(model.prelude, 0, 0, 0, False, (hidden,), None)
+            depth = 0
+            for pass_index in range(self.inference_passes):
+                for layer in model.layers:
+                    depth += 1
+                    blocks, partial = apply(layer, depth, depth, pass_index, True, blocks, partial)
+                if pass_index == 0:
+                    # Fork the readout and its KV cache without changing the main residual history.
+                    early = readout(*apply(model.coda, self.reference_coda_slot, depth + 1, 0, False, blocks, partial))
+            final = readout(*apply(model.coda, self.coda_slot, depth + 1, 0, False, blocks, partial))
+            return torch.cat((final, early), dim=-1)
+
+        def compute_logits(self, hidden_states):
+            if not self.loopcd_weight:
+                return self.hf.lm_head(hidden_states)
+            final, early = hidden_states.split(self.config.hidden_size, dim=-1)
+            final = self.hf.lm_head(final.contiguous()).float()
+            early = self.hf.lm_head(early.contiguous()).float()
+            return final + self.loopcd_weight * (final - early)
 
         def _fuse(self):
             if not self.fuse_projections:return

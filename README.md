@@ -68,6 +68,14 @@ reuse. Use a smaller limit when serving a model trained for a shorter context.
 The [validation receipt](validation/kroha-adapters-gpu-20261123.json) records
 the exact checkpoint, runtime versions and BF16 differences from HF.
 
+### LoopCD-Logits
+
+Add `"kroha_loopcd_weight":0.3` to the JSON passed to `--additional-config`
+to enable [LoopCD-Logits](https://arxiv.org/abs/2610.02185). Use Kroha-base and
+`--enforce-eager`. In Python, set the same key in `LLM(additional_config=...)`.
+The default weight is `0.0`. For the single-pass evaluation mode, set
+`"kroha_inference_passes":1` with the default weight.
+
 ## Implementation
 
 The adapter retains the trained recursion, softplus/sqrt router, clipped SwiGLU,
